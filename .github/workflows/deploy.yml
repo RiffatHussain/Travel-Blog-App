@@ -24,7 +24,7 @@ jobs:
 
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME} "
           cd /var/www/Travel-Blog-App &&
-          npm i &&
-          npm run build &&
+          sudo npm i &&
+          sudo npm run build &&
           sudo systemctl reload apache2"
 
