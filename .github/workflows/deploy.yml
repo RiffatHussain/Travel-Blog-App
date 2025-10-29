@@ -10,9 +10,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Deploy to Ubuntu server
         env:
           PRIVATE_KEY: ${{ secrets.SSH_KEY }}
