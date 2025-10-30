@@ -38,7 +38,7 @@ jobs:
 
           echo "🚀 Deploying branch '$BRANCH' to $TARGET_DIR"
 
-          ssh -i -o StrictHostKeyChecking=no private_key $USER_NAME@$HOST_NAME << EOF
+          ssh -o StrictHostKeyChecking=no -i private_key $USER_NAME@$HOST_NAME << EOF
             set -e
             echo "🔹 Switching to directory: $TARGET_DIR"
             cd $TARGET_DIR
