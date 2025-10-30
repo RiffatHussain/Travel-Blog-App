@@ -12,10 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Deploy Based on Branch
+      - name:  Deployment Based on Branch
         env:
           PRIVATE_KEY: ${{ secrets.SSH_KEY }}
           HOST_NAME: ${{ secrets.HOST_NAME }}
@@ -37,15 +34,24 @@ jobs:
             BRANCH="dev"
           fi
 
-          echo "🚀 Deploying branch '$BRANCH' to $TARGET_DIR"
+          echo "🚀 Deploying branch '$BRANCH' to $TARGET_DIR on $HOST_NAME"
 
-          ssh -i private_key -o StrictHostKeyChecking=no ${USER_NAME}@${HOST_NAME} << 'EOF'
+          ssh -i private_key -o StrictHostKeyChecking=no ${USER_NAME}@${HOST_NAME} <<EOF
             set -e
+            echo "🔄 Pulling latest changes from branch: $BRANCH"
             cd $TARGET_DIR
             git fetch origin $BRANCH
             git checkout $BRANCH
             git pull origin $BRANCH
+
+            echo "📦 Installing dependencies..."
             npm install
+
+            echo "🏗️ Building production files..."
             npm run build
+
+            echo "♻️ Reloading Apache server..."
             sudo systemctl reload apache2
+
+            echo "✅ Deployment for '$BRANCH' completed successfully at $(date)"
 EOF
