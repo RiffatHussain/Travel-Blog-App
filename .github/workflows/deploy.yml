@@ -9,50 +9,50 @@ on:
 
 jobs:
   deploy:
-    name : Multi-Branch Deployment
-    runs-on: ubuntu-latest
+    - name : Multi-Branch Deployment
+      runs-on: ubuntu-latest
 
-    steps:
-      - name:  Deployment Based on Branch
-        env:
+      steps:
+        - name:  Deployment Based on Branch
+          env:
           PRIVATE_KEY: ${{ secrets.SSH_KEY }}
           HOST_NAME: ${{ secrets.HOST_NAME }}
           USER_NAME: ${{ secrets.USER_NAME }}
 
-        run: |
-          echo "$PRIVATE_KEY" > private_key
-          chmod 600 private_key
-
-          # Determine target directory based on branch
-          if [ "${{ github.ref_name }}" == "main" ]; then
-            TARGET_DIR="/var/www/Travel-Blog-App"
-            BRANCH="main"
-          elif [ "${{ github.ref_name }}" == "staging" ]; then
-            TARGET_DIR="/var/www/staging"
-            BRANCH="staging"
-          elif [ "${{ github.ref_name }}" == "dev" ]; then
-            TARGET_DIR="/var/www/dev"
-            BRANCH="dev"
-          fi
-
-          echo "🚀 Deploying branch '$BRANCH' to $TARGET_DIR on $HOST_NAME"
-
-          ssh -i private_key -o StrictHostKeyChecking=no ${USER_NAME}@${HOST_NAME} <<EOF
-            set -e
-            echo "🔄 Pulling latest changes from branch: $BRANCH"
-            cd $TARGET_DIR
-            git fetch origin $BRANCH
-            git checkout $BRANCH
-            git pull origin $BRANCH
-
-            echo "📦 Installing dependencies..."
-            npm install
-
-            echo "🏗️ Building production files..."
-            npm run build
-
-            echo "♻️ Reloading Apache server..."
-            sudo systemctl reload apache2
-
-            echo "✅ Deployment for '$BRANCH' completed successfully at $(date)"
-EOF
+          run: |
+            echo "$PRIVATE_KEY" > private_key
+            chmod 600 private_key
+  
+            # Determine target directory based on branch
+            if [ "${{ github.ref_name }}" == "main" ]; then
+              TARGET_DIR="/var/www/Travel-Blog-App"
+              BRANCH="main"
+            elif [ "${{ github.ref_name }}" == "staging" ]; then
+              TARGET_DIR="/var/www/staging"
+              BRANCH="staging"
+            elif [ "${{ github.ref_name }}" == "dev" ]; then
+              TARGET_DIR="/var/www/dev"
+              BRANCH="dev"
+            fi
+  
+            echo "🚀 Deploying branch '$BRANCH' to $TARGET_DIR on $HOST_NAME"
+  
+            ssh -i private_key -o StrictHostKeyChecking=no ${USER_NAME}@${HOST_NAME} <<EOF
+              set -e
+              echo "🔄 Pulling latest changes from branch: $BRANCH"
+              cd $TARGET_DIR
+              git fetch origin $BRANCH
+              git checkout $BRANCH
+              git pull origin $BRANCH
+  
+              echo "📦 Installing dependencies..."
+              npm install
+  
+              echo "🏗️ Building production files..."
+              npm run build
+  
+              echo "♻️ Reloading Apache server..."
+              sudo systemctl reload apache2
+  
+              echo "✅ Deployment for '$BRANCH' completed successfully at $(date)"
+  EOF
