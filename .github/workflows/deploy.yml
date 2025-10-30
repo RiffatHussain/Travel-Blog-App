@@ -1,4 +1,4 @@
-name: Multi-Branch React App Deployment to Ubuntu Server
+name: Multi-Branch React App Deployment
 
 on:
   push:
@@ -8,11 +8,22 @@ on:
       - dev
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy to Ubuntu server
+      - name: Set branch-specific environment
+        id: vars
+        run: |
+          if [ "${{ github.ref_name }}" == "main" ]; then
+            echo "TARGET_DIR=/var/www/Travel-Blog-App" >> $GITHUB_ENV
+          elif [ "${{ github.ref_name }}" == "staging" ]; then
+            echo "TARGET_DIR=/var/www/staging" >> $GITHUB_ENV
+          elif [ "${{ github.ref_name }}" == "dev" ]; then
+            echo "TARGET_DIR=/var/www/dev" >> $GITHUB_ENV
+          fi
+
+      - name: Deploy to Ubuntu Server
         env:
           PRIVATE_KEY: ${{ secrets.SSH_KEY }}
           HOST_NAME: ${{ secrets.HOST_NAME }}
@@ -21,19 +32,11 @@ jobs:
           echo "$PRIVATE_KEY" > private_key
           chmod 600 private_key
 
-          # Determine target directory based on branch name
-          if [ "${{ github.ref_name }}" == "main" ]; then
-            TARGET_DIR="/var/www/Travel-Blog-App"
-          elif [ "${{ github.ref_name }}" == "staging" ]; then
-            TARGET_DIR="/var/www/staging"
-          elif [ "${{ github.ref_name }}" == "dev" ]; then
-            TARGET_DIR="/var/www/dev"
-          fi
-
           echo "🚀 Deploying '${{ github.ref_name }}' branch to $TARGET_DIR"
 
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME} "
-            cd $TARGET_DIR &&
+            TARGET_DIR=${TARGET_DIR} &&
+            cd \$TARGET_DIR &&
             sudo git pull origin ${{ github.ref_name }} &&
             sudo npm install &&
             sudo npm run build &&
