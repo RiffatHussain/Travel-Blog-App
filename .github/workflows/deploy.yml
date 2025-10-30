@@ -17,12 +17,10 @@ jobs:
           PRIVATE_KEY: ${{ secrets.SSH_KEY }}
           HOST_NAME: ${{ secrets.HOST_NAME }}
           USER_NAME: ${{ secrets.USER_NAME }}
+          BRANCH_NAME: ${{ github.ref_name }}
         run: |
           echo "$PRIVATE_KEY" > private_key
           chmod 600 private_key
-
-          # Detect branch name
-          BRANCH_NAME="${GITHUB_REF##*/}"
 
           # Decide target directory based on branch
           if [ "$BRANCH_NAME" = "main" ]; then
@@ -32,7 +30,7 @@ jobs:
           elif [ "$BRANCH_NAME" = "dev" ]; then
             TARGET_DIR="/var/www/dev"
           else
-            echo "Unknown branch. Exiting."
+            echo "Unknown branch: $BRANCH_NAME"
             exit 1
           fi
 
@@ -40,7 +38,10 @@ jobs:
 
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME} "
             cd $TARGET_DIR &&
-            sudo git pull &&
+            echo 'Switching to $BRANCH_NAME' &&
+            sudo git fetch origin $BRANCH_NAME &&
+            sudo git checkout $BRANCH_NAME &&
+            sudo git pull origin $BRANCH_NAME &&
             sudo npm install &&
             sudo npm run build &&
             sudo systemctl reload apache2
