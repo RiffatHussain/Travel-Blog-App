@@ -9,6 +9,7 @@ on:
 
 jobs:
   deploy:
+    name : Multi-Branch Deployment
     runs-on: ubuntu-latest
 
     steps:
