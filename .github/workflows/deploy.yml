@@ -22,7 +22,7 @@ jobs:
           echo "$PRIVATE_KEY" > private_key
           chmod 600 private_key
 
-          # Decide target directory based on branch
+          # Determine the target directory based on branch name
           if [ "$BRANCH_NAME" = "main" ]; then
             TARGET_DIR="/var/www/Travel-Blog-App"
           elif [ "$BRANCH_NAME" = "staging" ]; then
@@ -37,12 +37,12 @@ jobs:
           echo "Deploying branch '$BRANCH_NAME' to $TARGET_DIR"
 
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME} "
-            cd $TARGET_DIR &&
-            echo 'Switching to $BRANCH_NAME' &&
-            sudo git fetch origin $BRANCH_NAME &&
-            sudo git checkout $BRANCH_NAME &&
-            sudo git pull origin $BRANCH_NAME &&
-            sudo npm install &&
-            sudo npm run build &&
+            set -e
+            echo 'Switching to branch: $BRANCH_NAME in $TARGET_DIR'
+            cd $TARGET_DIR
+            sudo git pull origin $BRANCH_NAME
+            sudo npm i
+            sudo npm run build
             sudo systemctl reload apache2
+            echo 'Deployment of branch $BRANCH_NAME completed successfully.'
           "
