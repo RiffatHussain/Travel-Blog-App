@@ -1,16 +1,18 @@
-name: Deploy React App to Ubuntu Server
+name: Multi-Environment React App Deployment
 
 on:
   push:
     branches:
       - main
+      - staging
+      - dev
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy to Ubuntu server
+      - name: Deploy to Ubuntu Server
         env:
           PRIVATE_KEY: ${{ secrets.SSH_KEY }}
           HOST_NAME: ${{ secrets.HOST_NAME }}
@@ -19,10 +21,27 @@ jobs:
           echo "$PRIVATE_KEY" > private_key
           chmod 600 private_key
 
-          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME} "
-          cd /var/www/Travel-Blog-App &&
-          sudo git pull &&
-          sudo npm i &&
-          sudo npm run build &&
-          sudo systemctl reload apache2"
+          # Detect branch name
+          BRANCH_NAME="${GITHUB_REF##*/}"
 
+          # Decide target directory based on branch
+          if [ "$BRANCH_NAME" = "main" ]; then
+            TARGET_DIR="/var/www/Travel-Blog-App"
+          elif [ "$BRANCH_NAME" = "staging" ]; then
+            TARGET_DIR="/var/www/staging"
+          elif [ "$BRANCH_NAME" = "dev" ]; then
+            TARGET_DIR="/var/www/dev"
+          else
+            echo "Unknown branch. Exiting."
+            exit 1
+          fi
+
+          echo "Deploying branch '$BRANCH_NAME' to $TARGET_DIR"
+
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME} "
+            cd $TARGET_DIR &&
+            sudo git pull &&
+            sudo npm install &&
+            sudo npm run build &&
+            sudo systemctl reload apache2
+          "
