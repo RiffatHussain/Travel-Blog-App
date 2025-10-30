@@ -20,6 +20,7 @@ jobs:
           PRIVATE_KEY: ${{ secrets.SSH_KEY }}
           HOST_NAME: ${{ secrets.HOST_NAME }}
           USER_NAME: ${{ secrets.USER_NAME }}
+
         run: |
           echo "$PRIVATE_KEY" > private_key
           chmod 600 private_key
@@ -38,24 +39,13 @@ jobs:
 
           echo "🚀 Deploying branch '$BRANCH' to $TARGET_DIR"
 
-          ssh -o StrictHostKeyChecking=no -i private_key $USER_NAME@$HOST_NAME << EOF
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME} "
             set -e
-            echo "🔹 Switching to directory: $TARGET_DIR"
             cd $TARGET_DIR
-
-            echo "🔹 Pulling latest code from branch: $BRANCH"
             git fetch origin $BRANCH
             git checkout $BRANCH
             git pull origin $BRANCH
-
-            echo "🔹 Installing dependencies..."
-            npm install --legacy-peer-deps
-
-            echo "🔹 Building production files..."
+            npm install
             npm run build
+            sudo systemctl reload apache2"
 
-            echo "🔹 Reloading Apache to apply changes..."
-            sudo systemctl reload apache2
-
-            echo "✅ Deployment complete for $BRANCH"
-          EOF
