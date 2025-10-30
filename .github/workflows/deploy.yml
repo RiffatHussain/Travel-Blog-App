@@ -1,29 +1,14 @@
-name: Multi-Branch React App Deployment
-
 on:
   push:
     branches:
       - main
-      - staging
-      - dev
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set branch-specific environment
-        id: vars
-        run: |
-          if [ "${{ github.ref_name }}" == "main" ]; then
-            echo "TARGET_DIR=/var/www/Travel-Blog-App" >> $GITHUB_ENV
-          elif [ "${{ github.ref_name }}" == "staging" ]; then
-            echo "TARGET_DIR=/var/www/staging" >> $GITHUB_ENV
-          elif [ "${{ github.ref_name }}" == "dev" ]; then
-            echo "TARGET_DIR=/var/www/dev" >> $GITHUB_ENV
-          fi
-
-      - name: Deploy to Ubuntu Server
+      - name: Deploy to Ubuntu server
         env:
           PRIVATE_KEY: ${{ secrets.SSH_KEY }}
           HOST_NAME: ${{ secrets.HOST_NAME }}
@@ -32,13 +17,9 @@ jobs:
           echo "$PRIVATE_KEY" > private_key
           chmod 600 private_key
 
-          echo "🚀 Deploying '${{ github.ref_name }}' branch to $TARGET_DIR"
-
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME} "
-            TARGET_DIR=${TARGET_DIR} &&
-            cd \$TARGET_DIR &&
-            sudo git pull origin ${{ github.ref_name }} &&
-            sudo npm install &&
-            sudo npm run build &&
-            sudo systemctl reload apache2
-          "
+          cd /var/www/Travel-Blog-App &&
+          sudo git pull &&
+          sudo npm i &&
+          sudo npm run build &&	
+          sudo systemctl reload apache2"
