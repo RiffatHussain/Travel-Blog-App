@@ -1,4 +1,4 @@
-name: Multi-Branch Remote Deployment
+name: Multi-Branch React App Deployment to Ubuntu Server
 
 on:
   push:
@@ -8,51 +8,34 @@ on:
       - dev
 
 jobs:
-  deploy:
-    - name : Multi-Branch Deployment
-      runs-on: ubuntu-latest
+  build-and-deploy:
+    runs-on: ubuntu-latest
 
-      steps:
-        - name:  Deployment Based on Branch
-          env:
+    steps:
+      - name: Deploy to Ubuntu server
+        env:
           PRIVATE_KEY: ${{ secrets.SSH_KEY }}
           HOST_NAME: ${{ secrets.HOST_NAME }}
           USER_NAME: ${{ secrets.USER_NAME }}
+        run: |
+          echo "$PRIVATE_KEY" > private_key
+          chmod 600 private_key
 
-          run: |
-            echo "$PRIVATE_KEY" > private_key
-            chmod 600 private_key
-  
-            # Determine target directory based on branch
-            if [ "${{ github.ref_name }}" == "main" ]; then
-              TARGET_DIR="/var/www/Travel-Blog-App"
-              BRANCH="main"
-            elif [ "${{ github.ref_name }}" == "staging" ]; then
-              TARGET_DIR="/var/www/staging"
-              BRANCH="staging"
-            elif [ "${{ github.ref_name }}" == "dev" ]; then
-              TARGET_DIR="/var/www/dev"
-              BRANCH="dev"
-            fi
-  
-            echo "🚀 Deploying branch '$BRANCH' to $TARGET_DIR on $HOST_NAME"
-  
-            ssh -i private_key -o StrictHostKeyChecking=no ${USER_NAME}@${HOST_NAME} <<EOF
-              set -e
-              echo "🔄 Pulling latest changes from branch: $BRANCH"
-              cd $TARGET_DIR
-              git fetch origin $BRANCH
-              git checkout $BRANCH
-              git pull origin $BRANCH
-  
-              echo "📦 Installing dependencies..."
-              npm install
-  
-              echo "🏗️ Building production files..."
-              npm run build
-  
-              echo "♻️ Reloading Apache server..."
-              sudo systemctl reload apache2
-  
-              echo "✅ Deployment for '$BRANCH' completed successfully at $(date)"
-  EOF
+          # Determine target directory based on branch name
+          if [ "${{ github.ref_name }}" == "main" ]; then
+            TARGET_DIR="/var/www/Travel-Blog-App"
+          elif [ "${{ github.ref_name }}" == "staging" ]; then
+            TARGET_DIR="/var/www/staging"
+          elif [ "${{ github.ref_name }}" == "dev" ]; then
+            TARGET_DIR="/var/www/dev"
+          fi
+
+          echo "🚀 Deploying '${{ github.ref_name }}' branch to $TARGET_DIR"
+
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME} "
+            cd $TARGET_DIR &&
+            sudo git pull origin ${{ github.ref_name }} &&
+            sudo npm install &&
+            sudo npm run build &&
+            sudo systemctl reload apache2
+          "
