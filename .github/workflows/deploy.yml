@@ -17,12 +17,12 @@ jobs:
 
       - name: Deploy Based on Branch
         env:
-          SSH_USER: ${{ secrets.SSH_USER }}
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          PRIVATE_KEY: ${{ secrets.SSH_KEY }}
+          HOST_NAME: ${{ secrets.HOST_NAME }}
+          USER_NAME: ${{ secrets.USER_NAME }}
         run: |
-          echo "$SSH_KEY" > key.pem
-          chmod 600 key.pem
+          echo "$PRIVATE_KEY" > private_key
+          chmod 600 private_key
 
           # Determine target directory based on branch
           if [ "${{ github.ref_name }}" == "main" ]; then
@@ -38,7 +38,7 @@ jobs:
 
           echo "🚀 Deploying branch '$BRANCH' to $TARGET_DIR"
 
-          ssh -i key.pem -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST << EOF
+          ssh -i -o StrictHostKeyChecking=no private_key $USER_NAME@$HOST_NAME << EOF
             set -e
             echo "🔹 Switching to directory: $TARGET_DIR"
             cd $TARGET_DIR
