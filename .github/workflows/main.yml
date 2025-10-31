@@ -1,3 +1,5 @@
+name: Deploy Production React App to Ubuntu Server
+
 on:
   push:
     branches:
