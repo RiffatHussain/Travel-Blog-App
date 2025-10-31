@@ -6,7 +6,7 @@ export default function Header() {
 	return (
 		<div>
 			<header className="journal-header">
-				<h1 className="title">Dev Site is Updated</h1>
+				<h1 className="title">Dev Site</h1>
 			</header>
 		</div>
 	)
