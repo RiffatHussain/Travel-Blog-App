@@ -47,6 +47,8 @@ jobs:
             fi
             cd $TARGET_DIR
             echo "📍 Inside: \$(pwd)"
+            echo "Fix for dubious ownership"
+            git config --global --add safe.directory $TARGET_DIR
             echo "🔄 Pulling latest code..."
             git pull origin $BRANCH_NAME
             echo "📦 Installing dependencies..."
