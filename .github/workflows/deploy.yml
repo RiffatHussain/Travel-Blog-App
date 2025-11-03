@@ -1,0 +1,54 @@
+name: Multi-Environment Deployment
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - staging
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set deployment path based on branch
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "DEPLOY_PATH=/var/www/Travel-Blog" >> $GITHUB_ENV
+          elif [ "${{ github.ref_name }}" = "dev" ]; then
+            echo "DEPLOY_PATH=/var/www/dev" >> $GITHUB_ENV
+          elif [ "${{ github.ref_name }}" = "staging" ]; then
+            echo "DEPLOY_PATH=/var/www/staging" >> $GITHUB_ENV
+          fi
+          echo "Deploying to $DEPLOY_PATH"
+
+      - name: Copy files to server (SCP)
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST_NAME }}        # <--- correct input name
+          username: ${{ secrets.USER_NAME }}    # <--- correct input name
+          key: ${{ secrets.SSH_KEY }}      # <--- correct input name
+          source: "."
+          target: "${{ env.DEPLOY_PATH }}"
+          rm: true
+
+      - name: SSH into server and build project
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST_NAME }}        # <--- correct input name
+          username: ${{ secrets.USER_NAME }}    # <--- correct input name
+          key: ${{ secrets.SSH_KEY }}      # <--- correct input name
+          envs: DEPLOY_PATH
+          script: |
+            echo "Deploying branch: ${{ github.ref_name }}"
+            echo "Target directory: $DEPLOY_PATH"
+            cd "$DEPLOY_PATH" || (echo "CD failed: $DEPLOY_PATH not found" && exit 1)
+            echo "Inside $(pwd)"
+            ls -la
+            npm install --silent
+            npm run build --silent
+            echo "Deployment complete ✅"
