@@ -1,58 +1,59 @@
-name: Multi-Environment Deployment
+name: Multi-Environment React App Deployment
 
 on:
   push:
     branches:
       - main
-      - dev
       - staging
+      - dev
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set deployment path based on branch
+      - name: 🚀 Deploy React App to Ubuntu Server
+        env:
+          PRIVATE_KEY: ${{ secrets.SSH_KEY }}
+          HOST_NAME: ${{ secrets.HOST_NAME }}
+          USER_NAME: ${{ secrets.USER_NAME }}
         run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "DEPLOY_PATH=/var/www/Travel-Blog" >> $GITHUB_ENV
-          elif [ "${{ github.ref_name }}" = "dev" ]; then
-            echo "DEPLOY_PATH=/var/www/dev" >> $GITHUB_ENV
-          elif [ "${{ github.ref_name }}" = "staging" ]; then
-            echo "DEPLOY_PATH=/var/www/staging" >> $GITHUB_ENV
+          echo "$PRIVATE_KEY" > private_key
+          chmod 600 private_key
+
+          # Detect branch
+          BRANCH_NAME="${GITHUB_REF##*/}"
+
+          # Decide target directory based on branch
+          if [ "$BRANCH_NAME" = "main" ]; then
+            TARGET_DIR="/var/www/Travel-Blog-App"
+          elif [ "$BRANCH_NAME" = "staging" ]; then
+            TARGET_DIR="/var/www/Travel-Blog-Staging"
+          elif [ "$BRANCH_NAME" = "dev" ]; then
+            TARGET_DIR="/var/www/Travel-Blog-Dev"
           else
-            echo "Unknown branch: ${{ github.ref_name }}"
+            echo "❌ Unknown branch: $BRANCH_NAME"
             exit 1
           fi
-          echo "🧭 Branch: ${{ github.ref_name }}"
-          echo "📁 Deploy path set to: $DEPLOY_PATH"
 
-      - name: Copy files to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.HOST_NAME }}
-          username: ${{ secrets.USER_NAME }}
-          key: ${{ secrets.SSH_KEY }}
-          source: "."                           # copy everything
-          target: "${{ env.DEPLOY_PATH }}"      # copy to branch-specific folder
-          rm: false                             # ❌ do NOT remove or recreate folders
+          echo "📦 Deploying branch '$BRANCH_NAME' to $TARGET_DIR on $HOST_NAME"
 
-      - name: SSH into server and build project
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ secrets.HOST_NAME }}
-          username: ${{ secrets.USER_NAME }}
-          key: ${{ secrets.SSH_KEY }}
-          envs: DEPLOY_PATH
-          script: |
-            echo "🚀 Deploying branch: ${{ github.ref_name }}"
-            echo "📂 Path: $DEPLOY_PATH"
-            cd "$DEPLOY_PATH" || (echo "❌ Directory not found: $DEPLOY_PATH" && exit 1)
-            echo "📍 Current location: $(pwd)"
-            ls -la
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME} <<EOF
+            set -e
+            echo "➡️ Connected to server."
+            if [ ! -d "$TARGET_DIR" ]; then
+              echo "❌ Target directory does not exist: $TARGET_DIR"
+              exit 1
+            fi
+            cd $TARGET_DIR
+            echo "📍 Inside: \$(pwd)"
+            echo "🔄 Pulling latest code..."
+            git pull origin $BRANCH_NAME
+            echo "📦 Installing dependencies..."
             npm install --silent
+            echo "🏗️ Building project..."
             npm run build --silent
-            echo "✅ Deployment finished successfully!"
+            echo "🔁 Reloading Apache..."
+            sudo systemctl reload apache2
+            echo "✅ Deployment complete for $BRANCH_NAME!"
+          EOF
