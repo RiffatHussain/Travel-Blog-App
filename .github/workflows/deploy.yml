@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Set deployment path based on branch
@@ -23,32 +23,36 @@ jobs:
             echo "DEPLOY_PATH=/var/www/dev" >> $GITHUB_ENV
           elif [ "${{ github.ref_name }}" = "staging" ]; then
             echo "DEPLOY_PATH=/var/www/staging" >> $GITHUB_ENV
+          else
+            echo "Unknown branch: ${{ github.ref_name }}"
+            exit 1
           fi
-          echo "Deploying to $DEPLOY_PATH"
+          echo "🧭 Branch: ${{ github.ref_name }}"
+          echo "📁 Deploy path set to: $DEPLOY_PATH"
 
-      - name: Copy files to server (SCP)
+      - name: Copy files to server
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.HOST_NAME }}        # <--- correct input name
-          username: ${{ secrets.USER_NAME }}    # <--- correct input name
-          key: ${{ secrets.SSH_KEY }}      # <--- correct input name
-          source: "."
-          target: "${{ env.DEPLOY_PATH }}"
-          rm: true
+          host: ${{ secrets.HOST_NAME }}
+          username: ${{ secrets.USER_NAME }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "."                           # copy everything
+          target: "${{ env.DEPLOY_PATH }}"      # copy to branch-specific folder
+          rm: false                             # ❌ do NOT remove or recreate folders
 
       - name: SSH into server and build project
         uses: appleboy/ssh-action@v0.1.7
         with:
-          host: ${{ secrets.HOST_NAME }}        # <--- correct input name
-          username: ${{ secrets.USER_NAME }}    # <--- correct input name
-          key: ${{ secrets.SSH_KEY }}      # <--- correct input name
+          host: ${{ secrets.HOST_NAME }}
+          username: ${{ secrets.USER_NAME }}
+          key: ${{ secrets.SSH_KEY }}
           envs: DEPLOY_PATH
           script: |
-            echo "Deploying branch: ${{ github.ref_name }}"
-            echo "Target directory: $DEPLOY_PATH"
-            cd "$DEPLOY_PATH" || (echo "CD failed: $DEPLOY_PATH not found" && exit 1)
-            echo "Inside $(pwd)"
+            echo "🚀 Deploying branch: ${{ github.ref_name }}"
+            echo "📂 Path: $DEPLOY_PATH"
+            cd "$DEPLOY_PATH" || (echo "❌ Directory not found: $DEPLOY_PATH" && exit 1)
+            echo "📍 Current location: $(pwd)"
             ls -la
             npm install --silent
             npm run build --silent
-            echo "Deployment complete ✅"
+            echo "✅ Deployment finished successfully!"
