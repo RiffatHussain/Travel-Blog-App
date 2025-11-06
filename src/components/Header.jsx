@@ -6,7 +6,7 @@ export default function Header() {
 	return (
 		<div>
 			<header className="journal-header">
-				<h1 className="title">Staging Site is ready for launch</h1>
+				<h1 className="title">Staging Site is ready for Production</h1>
 			</header>
 		</div>
 	)
