@@ -53,4 +53,8 @@ jobs:
             sudo npm install &&
             sudo npm run build &&
             sudo systemctl reload apache2
+<<<<<<< HEAD
           "
+=======
+          "
+>>>>>>> 53b8918e6856ad09bffcb93a83bd232eadc4caa9
