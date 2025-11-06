@@ -49,6 +49,8 @@ jobs:
 
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME} "
             cd $APP_PATH &&
+            sudo git fetch origin &&
+            sudo git checkout $GIT_BRANCH &&
             sudo git pull origin $GIT_BRANCH &&
             sudo npm install &&
             sudo npm run build &&
