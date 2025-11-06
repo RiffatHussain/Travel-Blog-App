@@ -1,4 +1,4 @@
-name: Multi-Environment React App Deployment
+name: Multi-Branch React App Deployment
 
 on:
   push:
@@ -8,54 +8,49 @@ on:
       - dev
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🚀 Deploy React App to Ubuntu Server
+      - name: Set up SSH and determine environment
+        id: set-env
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          echo "Branch detected: $BRANCH_NAME"
+
+          # Set the app directory based on branch name
+          if [ "$BRANCH_NAME" = "main" ]; then
+            echo "APP_PATH=/var/www/Travel-Blog-App" >> $GITHUB_ENV
+            echo "GIT_BRANCH=main" >> $GITHUB_ENV
+          elif [ "$BRANCH_NAME" = "staging" ]; then
+            echo "APP_PATH=/var/www/staging" >> $GITHUB_ENV
+            echo "GIT_BRANCH=staging" >> $GITHUB_ENV
+          elif [ "$BRANCH_NAME" = "dev" ]; then
+            echo "APP_PATH=/var/www/dev" >> $GITHUB_ENV
+            echo "GIT_BRANCH=dev" >> $GITHUB_ENV
+          else
+            echo "Unknown branch. Exiting..."
+            exit 1
+          fi
+
+      - name: Deploy to Ubuntu Server
         env:
           PRIVATE_KEY: ${{ secrets.SSH_KEY }}
           HOST_NAME: ${{ secrets.HOST_NAME }}
           USER_NAME: ${{ secrets.USER_NAME }}
+          APP_PATH: ${{ env.APP_PATH }}
+          GIT_BRANCH: ${{ env.GIT_BRANCH }}
         run: |
           echo "$PRIVATE_KEY" > private_key
           chmod 600 private_key
 
-          # Detect branch
-          BRANCH_NAME="${GITHUB_REF##*/}"
+          echo "Deploying branch '$GIT_BRANCH' to '$APP_PATH' on $HOST_NAME..."
 
-          # Decide target directory based on branch
-          if [ "$BRANCH_NAME" = "main" ]; then
-            TARGET_DIR="/var/www/Travel-Blog-App"
-          elif [ "$BRANCH_NAME" = "staging" ]; then
-            TARGET_DIR="/var/www/Travel-Blog-Staging"
-          elif [ "$BRANCH_NAME" = "dev" ]; then
-            TARGET_DIR="/var/www/Travel-Blog-Dev"
-          else
-            echo "❌ Unknown branch: $BRANCH_NAME"
-            exit 1
-          fi
-
-          echo "📦 Deploying branch '$BRANCH_NAME' to $TARGET_DIR on $HOST_NAME"
-
-          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME} <<EOF
-            set -e
-            echo "➡️ Connected to server."
-            if [ ! -d "$TARGET_DIR" ]; then
-              echo "❌ Target directory does not exist: $TARGET_DIR"
-              exit 1
-            fi
-            cd $TARGET_DIR
-            echo "📍 Inside: \$(pwd)"
-            echo "Fix for dubious ownership"
-            git config --global --add safe.directory $TARGET_DIR
-            echo "🔄 Pulling latest code..."
-            git pull origin $BRANCH_NAME
-            echo "📦 Installing dependencies..."
-            npm install --silent
-            echo "🏗️ Building project..."
-            npm run build --silent
-            echo "🔁 Reloading Apache..."
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME} "
+            cd $APP_PATH &&
+            sudo git pull origin $GIT_BRANCH &&
+            sudo npm install &&
+            sudo npm run build &&
             sudo systemctl reload apache2
-            echo "✅ Deployment complete for $BRANCH_NAME!"
-          EOF
+          "
