@@ -1,0 +1,58 @@
+name: Multi-Branch React App Deployment
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - dev
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up SSH and determine environment
+        id: set-env
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          echo "Branch detected: $BRANCH_NAME"
+
+          # Set the app directory based on branch name
+          if [ "$BRANCH_NAME" = "main" ]; then
+            echo "APP_PATH=/var/www/Travel-Blog-App" >> $GITHUB_ENV
+            echo "GIT_BRANCH=main" >> $GITHUB_ENV
+          elif [ "$BRANCH_NAME" = "staging" ]; then
+            echo "APP_PATH=/var/www/staging" >> $GITHUB_ENV
+            echo "GIT_BRANCH=staging" >> $GITHUB_ENV
+          elif [ "$BRANCH_NAME" = "dev" ]; then
+            echo "APP_PATH=/var/www/dev" >> $GITHUB_ENV
+            echo "GIT_BRANCH=dev" >> $GITHUB_ENV
+          else
+            echo "Unknown branch. Exiting..."
+            exit 1
+          fi
+
+      - name: Deploy to Ubuntu Server
+        env:
+          PRIVATE_KEY: ${{ secrets.SSH_KEY }}
+          HOST_NAME: ${{ secrets.HOST_NAME }}
+          USER_NAME: ${{ secrets.USER_NAME }}
+          APP_PATH: ${{ env.APP_PATH }}
+          GIT_BRANCH: ${{ env.GIT_BRANCH }}
+        run: |
+          echo "$PRIVATE_KEY" > private_key
+          chmod 600 private_key
+
+          echo "Deploying branch '$GIT_BRANCH' to '$APP_PATH' on $HOST_NAME..."
+
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOST_NAME} "
+            cd $APP_PATH &&
+            sudo git fetch origin &&
+            sudo git checkout $GIT_BRANCH &&
+            sudo git pull origin $GIT_BRANCH &&
+            sudo npm install &&
+            sudo npm run build &&
+            sudo systemctl reload apache2
+          "
